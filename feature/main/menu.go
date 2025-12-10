@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"majotabi-bot/lib/cache"
 	"majotabi-bot/lib/config"
 	"majotabi-bot/lib/helper"
 	"majotabi-bot/lib/registry"
@@ -59,27 +60,25 @@ func MenuHandler(ctx context.Context, client *whatsmeow.Client, msg *events.Mess
 
 	footer := "\n_Majotabi - Go by Lipp Majotabi ☘️_"
 	finalText := header + subHeader + menuText + footer
+	
+	var uploaded whatsmeow.UploadResponse
+	var err error
 
-	imgData, err := downloadImage(config.Current.Thumbnail)
-	if err != nil {
-		client.SendMessage(ctx, msg.Info.Chat, &waE2E.Message{
-			ExtendedTextMessage: &waE2E.ExtendedTextMessage{
-				Text:        &finalText,
-				ContextInfo: helper.GetContext(msg),
-			},
-		})
-		return
-	}
+	if cache.MenuThumbnail == nil {
+		imgData, errDownload := downloadImage(config.Current.Thumbnail)
+		if errDownload != nil {
+			client.SendMessage(ctx, msg.Info.Chat, &waE2E.Message{Conversation: &finalText})
+			return
+		}
 
-	uploaded, err := client.Upload(ctx, imgData, whatsmeow.MediaImage)
-	if err != nil {
-		client.SendMessage(ctx, msg.Info.Chat, &waE2E.Message{
-			ExtendedTextMessage: &waE2E.ExtendedTextMessage{
-				Text:        &finalText,
-				ContextInfo: helper.GetContext(msg),
-			},
-		})
-		return
+		uploaded, err = client.Upload(ctx, imgData, whatsmeow.MediaImage)
+		if err != nil {
+			client.SendMessage(ctx, msg.Info.Chat, &waE2E.Message{Conversation: &finalText})
+			return
+		}
+		cache.MenuThumbnail = &uploaded
+	} else {
+		uploaded = *cache.MenuThumbnail
 	}
 
 	mimeType := "image/jpeg"
